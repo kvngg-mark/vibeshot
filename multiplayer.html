@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VibeShot - Multiplayer</title>
+  <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: Arial, sans-serif;
+      background: linear-gradient(135deg, #1e3c72, #2a5298);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      color: white;
+    }
+
+    .container {
+      text-align: center;
+      background: rgba(0, 0, 0, 0.7);
+      padding: 40px;
+      border-radius: 10px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    }
+
+    h1 {
+      font-size: 2.5em;
+      margin-bottom: 10px;
+      color: #ff4d4d;
+      text-shadow: 0 2px 10px rgba(255, 77, 77, 0.5);
+    }
+
+    .subtitle {
+      font-size: 1.2em;
+      color: #ccc;
+      margin-bottom: 30px;
+    }
+
+    .status {
+      margin: 20px 0;
+      padding: 15px;
+      border-radius: 5px;
+      background: rgba(0, 0, 0, 0.5);
+      min-height: 60px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.1em;
+    }
+
+    .status.success {
+      color: #00ff00;
+      border: 2px solid #00ff00;
+    }
+
+    .status.error {
+      color: #ff0000;
+      border: 2px solid #ff0000;
+    }
+
+    .status.waiting {
+      color: #ffff00;
+      border: 2px solid #ffff00;
+      animation: blink 1s infinite;
+    }
+
+    @keyframes blink {
+      0%, 50% { opacity: 1; }
+      51%, 100% { opacity: 0.5; }
+    }
+
+    .form-group {
+      margin: 15px 0;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 5px;
+      font-size: 1.1em;
+    }
+
+    input {
+      width: 100%;
+      padding: 12px;
+      border: 2px solid #ff4d4d;
+      border-radius: 5px;
+      font-size: 1em;
+      background: #222;
+      color: white;
+    }
+
+    input:focus {
+      outline: none;
+      border-color: #00ff00;
+      box-shadow: 0 0 10px rgba(0, 255, 0, 0.3);
+    }
+
+    button {
+      width: 100%;
+      padding: 12px;
+      margin-top: 20px;
+      font-size: 1.1em;
+      font-weight: bold;
+      background: linear-gradient(135deg, #ff4d4d, #ff0000);
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+
+    button:hover {
+      transform: scale(1.05);
+      box-shadow: 0 0 20px rgba(255, 77, 77, 0.5);
+    }
+
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: scale(1);
+    }
+
+    .game-container {
+      width: 100%;
+      height: 100vh;
+      display: none;
+    }
+
+    .game-container.active {
+      display: block;
+    }
+
+    #mygame {
+      width: 100%;
+      height: 100%;
+    }
+
+    .game-info {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      background: rgba(0, 0, 0, 0.8);
+      padding: 10px;
+      border-radius: 5px;
+      font-size: 0.9em;
+      color: #0f0;
+      font-family: monospace;
+      z-index: 1000;
+    }
+  </style>
+</head>
+<body>
+  <div id="loginContainer" class="container">
+    <h1>VibeShot</h1>
+    <p class="subtitle">Multiplayer 8-Ball Billiards</p>
+    
+    <div class="form-group">
+      <label for="playerId">Player ID:</label>
+      <input type="text" id="playerId" placeholder="Enter your name" value="Player1">
+    </div>
+    
+    <div class="form-group">
+      <label for="serverUrl">Server URL:</label>
+      <input type="text" id="serverUrl" placeholder="http://localhost:3000" value="http://localhost:3000">
+    </div>
+
+    <div id="status" class="status" style="display: none;"></div>
+
+    <button id="connectBtn">Connect & Play</button>
+  </div>
+
+  <div id="gameContainer" class="game-container">
+    <div class="game-info">
+      <div>Status: <span id="mpStatus">Initializing...</span></div>
+      <div>Session: <span id="mpSession">-</span></div>
+    </div>
+    <center><div id="mygame"></div></center>
+  </div>
+
+  <script>
+    const loginContainer = document.getElementById('loginContainer');
+    const gameContainer = document.getElementById('gameContainer');
+    const playerIdInput = document.getElementById('playerId');
+    const serverUrlInput = document.getElementById('serverUrl');
+    const connectBtn = document.getElementById('connectBtn');
+    const statusDiv = document.getElementById('status');
+    const mpStatus = document.getElementById('mpStatus');
+    const mpSession = document.getElementById('mpSession');
+
+    let socket = null;
+    let playerId = null;
+    let serverUrl = null;
+
+    function showStatus(message, type = 'waiting') {
+      statusDiv.style.display = 'block';
+      statusDiv.textContent = message;
+      statusDiv.className = 'status ' + type;
+    }
+
+    function hideStatus() {
+      statusDiv.style.display = 'none';
+    }
+
+    connectBtn.addEventListener('click', async () => {
+      playerId = playerIdInput.value.trim();
+      serverUrl = serverUrlInput.value.trim();
+
+      if (!playerId || playerId.length < 3) {
+        showStatus('Player ID must be at least 3 characters', 'error');
+        return;
+      }
+
+      if (!serverUrl) {
+        showStatus('Server URL is required', 'error');
+        return;
+      }
+
+      connectBtn.disabled = true;
+      showStatus('Connecting to server...', 'waiting');
+
+      try {
+        // Create JWT stub token (in production, exchange credentials for token)
+        const token = 'dev-' + playerId + '-' + Date.now();
+        localStorage.setItem('jwt_token', token);
+
+        // Connect socket
+        socket = io(serverUrl, {
+          auth: { token }
+        });
+
+        socket.on('connect', () => {
+          showStatus('Connected! Finding match...', 'waiting');
+          mpStatus.textContent = 'Connected';
+          
+          // Initialize multiplayer in game
+          setTimeout(() => {
+            if (window.initMultiplayer) {
+              window.initMultiplayer(socket, playerId, serverUrl);
+            }
+            
+            // Start match
+            if (window.startMultiplayerMatch) {
+              window.startMultiplayerMatch();
+            }
+          }, 1000);
+        });
+
+        socket.on('match_found', ({ sessionId, opponentId }) => {
+          showStatus('Match found! Loading game...', 'success');
+          mpSession.textContent = sessionId;
+          hideStatus();
+          
+          // Switch to game container
+          setTimeout(() => {
+            loginContainer.style.display = 'none';
+            gameContainer.classList.add('active');
+          }, 1000);
+        });
+
+        socket.on('queued', ({ playerId: id }) => {
+          showStatus('Queued for match... ' + id, 'waiting');
+        });
+
+        socket.on('disconnect', () => {
+          mpStatus.textContent = 'Disconnected';
+          showStatus('Disconnected from server', 'error');
+        });
+
+        socket.on('error', (err) => {
+          showStatus('Connection error: ' + err.message, 'error');
+          connectBtn.disabled = false;
+        });
+
+      } catch (err) {
+        showStatus('Failed to connect: ' + err.message, 'error');
+        connectBtn.disabled = false;
+      }
+    });
+
+    // Load game scripts
+    const script = document.createElement('script');
+    script.src = 'main.html?type=script';
+    script.onerror = () => {
+      // Fallback: load individual scripts
+      const scripts = [
+        'assets/src/01phaser.js',
+        'assets/src/02Ball.js',
+        'assets/src/03contactListener.js',
+        'assets/src/04billiardPhysics.js',
+        'assets/src/05levelData.js',
+        'assets/src/06maths.js',
+        'assets/src/07vector2d.js',
+        'assets/src/08render.js',
+        'assets/src/09sound.js',
+        'assets/src/10effects.js',
+        'assets/src/11timer.js',
+        'assets/src/12load.js',
+        'assets/src/13mainMenu.js',
+        'assets/src/14setup.js',
+        'assets/src/15gameController.js',
+        'assets/src/17multiplayerAdapter.js',
+        'assets/src/16boot.js',
+        'assets/src/18multiplayerLauncher.js',
+        'html5games/gameapi/v1.js'
+      ];
+
+      function loadNextScript(index) {
+        if (index >= scripts.length) return;
+        const s = document.createElement('script');
+        s.src = scripts[index];
+        s.onload = () => loadNextScript(index + 1);
+        document.head.appendChild(s);
+      }
+      loadNextScript(0);
+    };
+    document.head.appendChild(script);
+  </script>
+</body>
+</html>

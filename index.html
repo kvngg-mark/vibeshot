@@ -1,1 +1,194 @@
-<html><head><meta content="text/html;charset=utf-8" http-equiv="Content-Type" /><meta content="utf-8" http-equiv="encoding" /><meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no, minimal-ui" /><title>8 Ball Billiards Classic</title><script>window.gameID="8-ball-billiards-classic"; window.gameJS=[ "assets/src/01phaser.js", "assets/src/02Ball.js", "assets/src/03contactListener.js", "assets/src/04billiardPhysics.js", "assets/src/05levelData.js", "assets/src/06maths.js", "assets/src/07vector2d.js", "assets/src/08render.js", "assets/src/09sound.js", "assets/src/10effects.js", "assets/src/11timer.js", "assets/src/12load.js", "assets/src/13mainMenu.js", "assets/src/14setup.js", "assets/src/15gameController.js", "assets/src/16boot.js", function (){}, ]; (function (document, url, fgJS, firstJS){ fgJS=document.createElement("script"); firstJS=document.getElementsByTagName("script")[0]; fgJS.src=url + ""; firstJS.parentNode.insertBefore(fgJS, firstJS);})(document, "html5games/gameapi/v1.js"); </script></head><body><center><div id="mygame"></div></center></body></html>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>VibeShot | Red 8-Ball Edition</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/meyer-reset/2.0/reset.min.css">
+  
+  <style>
+    :root {
+        --pure-red: #ff0000;
+        --neon-scarlet: #ff4d4d;
+        --bg-black: #050505;
+    }
+
+    body {
+      background: linear-gradient(rgba(0, 0, 0, 0.25), rgba(0, 0, 0, 0.25)), 
+                  url('https://uploads.onecompiler.io/449k8tj3x/44m2ryun3/Gemini_Generated_Image_plh7v2plh7v2plh7-ezremove.png');
+      
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      font-family: 'Arial Black', sans-serif;
+      margin: 0;
+      overflow: hidden;
+    }
+
+    /* Animated Logo */
+    svg {
+      width: 80%;
+      max-width: 1000px;
+      height: auto;
+      filter: drop-shadow(0 0 20px rgba(255, 0, 0, 0.4));
+      z-index: 10;
+      margin-bottom: -50px; 
+    }
+
+    .text-copy {
+      fill: none;
+      stroke-dasharray: 7% 28%;
+      stroke-width: 3px;
+      animation: stroke-offset 7s infinite linear;
+    }
+
+    .text-copy:nth-child(1) { stroke: #800000; stroke-dashoffset: 7%; }
+    .text-copy:nth-child(2) { stroke: var(--pure-red); stroke-dashoffset: 14%; }
+    .text-copy:nth-child(3) { stroke: #ffffff; stroke-dashoffset: 21%; }
+    .text-copy:nth-child(4) { stroke: var(--neon-scarlet); stroke-dashoffset: 28%; }
+    .text-copy:nth-child(5) { stroke: #330000; stroke-dashoffset: 35%; }
+
+    @keyframes stroke-offset { 100% { stroke-dashoffset: -35%; } }
+
+    /* Replacement Image Styling */
+    .hero-image-container {
+      width: 500px;
+      height: 400px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 5;
+      /* Keeping your radial depth fade */
+      mask-image: radial-gradient(circle, black 45%, transparent 80%);
+      -webkit-mask-image: radial-gradient(circle, black 45%, transparent 80%);
+    }
+
+    .vibe-ball-img {
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: contain;
+      /* Adding a floating animation since we lost the 3D rotation */
+      animation: float 4s ease-in-out infinite;
+      filter: drop-shadow(0 0 30px rgba(255, 0, 0, 0.3));
+    }
+
+    @keyframes float {
+      0%, 100% { transform: translateY(0px); }
+      50% { transform: translateY(-20px); }
+    }
+
+    /* UI Action Area */
+    .action-area {
+      margin-top: -10px;
+      height: 70px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 10;
+    }
+
+    .status-text {
+      font-family: 'Courier New', monospace;
+      color: var(--neon-scarlet);
+      font-size: 13px;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      opacity: 0.8;
+    }
+
+    .start-btn {
+      display: none;
+      background: linear-gradient(135deg, #800000, var(--pure-red));
+      color: white;
+      border: none;
+      padding: 18px 60px;
+      font-family: 'Arial Black', sans-serif;
+      font-size: 18px;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      border-radius: 50px;
+      cursor: pointer;
+      box-shadow: 0 0 25px rgba(255, 0, 0, 0.5);
+      transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      animation: fadeInUp 0.6s ease-out forwards;
+    }
+
+    .start-btn:hover {
+      transform: scale(1.08);
+      box-shadow: 0 0 40px rgba(255, 0, 0, 0.8);
+    }
+
+    @keyframes fadeInUp {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+  </style>
+</head>
+<body>
+
+    <svg viewBox="0 0 1000 300">
+      <symbol id="s-text">
+        <text text-anchor="middle" x="50%" y="60%" font-size="160">VIBESHOT</text>
+      </symbol>
+      <g class="g-ants">
+        <use xlink:href="#s-text" class="text-copy"></use>      
+        <use xlink:href="#s-text" class="text-copy"></use>      
+        <use xlink:href="#s-text" class="text-copy"></use>      
+        <use xlink:href="#s-text" class="text-copy"></use>      
+        <use xlink:href="#s-text" class="text-copy"></use>      
+      </g>
+    </svg>
+
+    <div class="hero-image-container">
+        <img src="https://uploads.onecompiler.io/449k8tj3x/44m2ryun3/rack1.png" alt="VibeShot Ball" class="vibe-ball-img" id="vibeImage">
+    </div>
+
+    <div class="action-area">
+        <p class="status-text" id="loader">...</p>
+        <button class="start-btn" id="startBtn">Play Now</button>
+    </div>
+
+    <script>
+        const status = document.getElementById('loader');
+        const btn = document.getElementById('startBtn');
+        const vibeImg = document.getElementById('vibeImage');
+
+        // Logic to wait for the image to load
+        if (vibeImg.complete) {
+            beginVibeSequence();
+        } else {
+            vibeImg.addEventListener('load', beginVibeSequence);
+            vibeImg.addEventListener('error', beginVibeSequence); // Fallback
+        }
+
+        function beginVibeSequence() {
+            const labels = ["connecting..."];
+            let i = 0;
+
+            const update = () => {
+                if (i < labels.length) {
+                    status.innerText = labels[i];
+                    if (i === labels.length - 1) {
+                        setTimeout(() => {
+                            status.style.display = 'none';
+                            btn.style.display = 'block';
+                            btn.addEventListener('click', () => {
+                                window.location.href = 'main.html';
+                            });
+                        }, 2000);
+                    } else {
+                        i++;
+                        setTimeout(update, 1500);
+                    }
+                }
+            };
+            update();
+        }
+    </script>
+</body>
+</html> 
